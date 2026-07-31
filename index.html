@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+<!-- אימון מהירות תגובה - גרסה v0.1 -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>אימון מהירות תגובה</title>
+<title>אימון מהירות תגובה v0.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -44,6 +45,7 @@ body{
 #screen-setup{padding:24px 20px;overflow-y:auto;justify-content:center;gap:28px;}
 .title-block{text-align:center;}
 .title-block h1{font-size:clamp(24px,7vw,30px);font-weight:900;margin:0 0 4px;letter-spacing:-0.5px;}
+.version-badge{font-size:11px;font-weight:800;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:2px 9px;direction:ltr;display:inline-block;vertical-align:middle;margin-right:6px;}
 .title-block p{font-size:14px;color:var(--text-dim);margin:0;}
 .setting-group{display:flex;flex-direction:column;gap:10px;}
 .setting-label{font-size:13px;font-weight:700;color:var(--text-dim);}
@@ -170,7 +172,7 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>מהירות תגובה</h1>
+    <h1>מהירות תגובה <span class="version-badge">v0.1</span></h1>
     <p>אימון תגובה בזיהוי תנועה דרך המצלמה</p>
   </div>
 
@@ -205,7 +207,7 @@ body{
 
 <div id="screen-training" class="screen hidden">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="proc-canvas" width="64" height="48" style="display:none;"></canvas>
+  <canvas id="proc-canvas" width="96" height="72" style="display:none;"></canvas>
 
   <div class="top-bar">
     <div class="round-pill" id="round-pill">סבב 1/5</div>
@@ -287,7 +289,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   var lastDiff=0;
   var phase='idle';
   var calibSamples=[];
-  var threshold=8;
+  var threshold=3;
   var aborted=false;
   var audioCtx=null;
 
@@ -518,6 +520,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
     updateDiscPosition();
   }
 
+  var PIXEL_DIFF_THRESHOLD=16;
   function computeDiff(){
     ctx.drawImage(video,0,0,canvas.width,canvas.height);
     var frame=ctx.getImageData(0,0,canvas.width,canvas.height).data;
@@ -526,14 +529,14 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
     for(var i=0,p=0;i<frame.length;i+=4,p++){
       luma[p]=(frame[i]+frame[i+1]+frame[i+2])/3;
     }
-    var diff=0;
+    var changed=0;
     if(lastLuma){
-      var sum=0;
-      for(var j=0;j<n;j++){ sum+=Math.abs(luma[j]-lastLuma[j]); }
-      diff=sum/n;
+      for(var j=0;j<n;j++){
+        if(Math.abs(luma[j]-lastLuma[j])>PIXEL_DIFF_THRESHOLD) changed++;
+      }
     }
     lastLuma=luma;
-    return diff;
+    return (changed/n)*100;
   }
 
   var frameCounter=0;
@@ -558,7 +561,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
         }
       }
     }
-    if(frameCounter%3===0){ detectFaceLoop(); }
+    if(frameCounter%3===0 && (phase==='wait'||phase==='idle')){ detectFaceLoop(); }
     rafId=requestAnimationFrame(detectTick);
   }
 
@@ -573,7 +576,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
     await sleep(700);
     phase='idle';
     var maxS=calibSamples.length? Math.max.apply(null,calibSamples):0;
-    threshold=Math.max(6,Math.min(40,maxS*1.7+4));
+    threshold=Math.max(1.2,Math.min(20,maxS*1.8+0.8));
   }
 
   function setDisc(cls){
