@@ -54,6 +54,15 @@ body{
 }
 .chip.active{background:var(--idle);border-color:var(--idle);color:#1A1508;}
 .hint{font-size:12px;color:var(--text-dim);line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.demo-row{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.demo-disc{width:44px;height:44px;min-width:44px;border-radius:50%;background:var(--idle);animation:demo-cycle 3.6s ease-in-out infinite;}
+.demo-text{font-size:12px;color:var(--text-dim);line-height:1.6;}
+@keyframes demo-cycle{
+  0%,48%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
+  53%{background:var(--go);box-shadow:0 0 0 7px rgba(255,59,48,0.28);transform:scale(1.05);}
+  70%{background:var(--success);box-shadow:0 0 0 7px rgba(61,220,151,0.28);transform:scale(1);}
+  96%,100%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
+}
 .error-box{display:none;font-size:13px;color:var(--go);background:rgba(255,59,48,0.1);border:1px solid var(--go);border-radius:12px;padding:12px 14px;line-height:1.6;}
 .btn-primary{
   width:100%;padding:18px;border:none;border-radius:16px;
@@ -88,8 +97,12 @@ body{
   cursor:pointer;
 }
 .disc-wrap{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;
+  position:absolute;inset:0;z-index:2;
   pointer-events:none;
+}
+.disc-pos{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  transition:left .25s ease, top .25s ease;
 }
 .disc{
   width:34vw;height:34vw;max-width:170px;max-height:170px;border-radius:50%;
@@ -163,7 +176,10 @@ body{
     </div>
   </div>
 
-  <div class="hint">עמדו מול המצלמה במרחק כ-1 מטר. העיגול צהוב = המתנה, אדום = תגיבו! זוזו (אגרוף/בעיטה/כל תנועה) מהר ככל האפשר.</div>
+  <div class="demo-row">
+    <div class="demo-disc"></div>
+    <div class="demo-text">עמדו מול המצלמה. העיגול עוקב אחרי הפנים שלכם. צהוב = המתנה, אדום = תגיבו מיד (זוזו - אגרוף/בעיטה/כל תנועה), ירוק = תפסתם. אין התרעה מראש - זו בדיוק הנקודה.</div>
+  </div>
 
   <div class="error-box" id="error-box"></div>
 
@@ -179,10 +195,10 @@ body{
     <button class="icon-btn" id="cancel-btn" aria-label="ביטול">✕</button>
   </div>
 
-  <div class="disc-wrap"><div class="disc breathe" id="disc"></div></div>
+  <div class="disc-wrap"><div class="disc-pos" id="discPos"><div class="disc breathe" id="disc"></div></div></div>
 
   <div class="bottom-bar">
-    <div class="instruction" id="instruction">היכונו...</div>
+    <div class="instruction" id="instruction"></div>
   </div>
 
   <div class="overlay-msg hidden" id="loading-overlay">
@@ -222,6 +238,7 @@ body{
   var canvas=document.getElementById('proc-canvas');
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
   var disc=document.getElementById('disc');
+  var discPos=document.getElementById('discPos');
   var instruction=document.getElementById('instruction');
   var roundPill=document.getElementById('round-pill');
   var cancelBtn=document.getElementById('cancel-btn');
@@ -253,6 +270,13 @@ body{
   var threshold=8;
   var aborted=false;
   var audioCtx=null;
+
+  var faceDetector=null;
+  try{ if('FaceDetector' in window){ faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:1}); } }catch(e){ faceDetector=null; }
+  var faceIntervalId=null;
+  var lastFaceCenter=null;
+  var lastFaceTime=0;
+  var FACE_STALE_MS=1400;
 
   function sleep(ms){return new Promise(function(res){setTimeout(res,ms);});}
 
@@ -314,6 +338,56 @@ body{
     video.srcObject=stream;
     video.classList.toggle('mirror',facing==='user');
     await video.play();
+    startFaceTracking();
+  }
+
+  function updateDiscPosition(){
+    var vw=video.videoWidth,vh=video.videoHeight;
+    var dw=video.clientWidth,dh=video.clientHeight;
+    if(!vw||!vh||!dw||!dh||!lastFaceCenter){
+      discPos.style.left='50%'; discPos.style.top='50%';
+      return;
+    }
+    var scale=Math.max(dw/vw,dh/vh);
+    var contentW=vw*scale,contentH=vh*scale;
+    var offsetX=(contentW-dw)/2,offsetY=(contentH-dh)/2;
+    var sx=lastFaceCenter.x*scale-offsetX;
+    var sy=lastFaceCenter.y*scale-offsetY;
+    if(facing==='user'){ sx=dw-sx; }
+    sx=Math.max(0,Math.min(dw,sx));
+    sy=Math.max(0,Math.min(dh,sy));
+    discPos.style.left=sx+'px';
+    discPos.style.top=sy+'px';
+  }
+
+  async function detectFaceLoop(){
+    if(!faceDetector || video.readyState<2) return;
+    try{
+      var faces=await faceDetector.detect(video);
+      if(faces && faces.length){
+        var box=faces[0].boundingBox;
+        lastFaceCenter={x:box.x+box.width/2,y:box.y+box.height*0.42};
+        lastFaceTime=performance.now();
+        updateDiscPosition();
+      } else if(performance.now()-lastFaceTime>FACE_STALE_MS){
+        lastFaceCenter=null;
+        updateDiscPosition();
+      }
+    }catch(e){}
+  }
+
+  function startFaceTracking(){
+    if(!faceDetector) return;
+    lastFaceCenter=null; lastFaceTime=0;
+    updateDiscPosition();
+    if(faceIntervalId) clearInterval(faceIntervalId);
+    faceIntervalId=setInterval(detectFaceLoop,220);
+  }
+
+  function stopFaceTracking(){
+    if(faceIntervalId){ clearInterval(faceIntervalId); faceIntervalId=null; }
+    lastFaceCenter=null;
+    discPos.style.left='50%'; discPos.style.top='50%';
   }
 
   function computeDiff(){
@@ -374,7 +448,7 @@ body{
 
   async function runRound(idx,total){
     roundPill.textContent='סבב '+idx+'/'+total;
-    instruction.textContent='היכונו...';
+    instruction.textContent='';
     setDisc('breathe');
     await runCalibration();
     if(aborted) return null;
@@ -383,6 +457,7 @@ body{
     var delay=range[0]+Math.random()*(range[1]-range[0]);
 
     setDisc('breathe');
+    instruction.textContent='';
     phase='wait';
     var falseStarted=false;
     var falseStartPromise=new Promise(function(res){ window.__onFalseStart=function(){falseStarted=true;res();}; });
@@ -492,6 +567,7 @@ body{
   function stopCamera(){
     if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
     if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+    stopFaceTracking();
     phase='idle';
   }
 
