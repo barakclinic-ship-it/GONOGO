@@ -361,6 +361,15 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   }
   function vibrate(pattern){ if(navigator.vibrate){ navigator.vibrate(pattern); } }
 
+  function playSuccessSound(){
+    beep(880,90,'sine');
+    setTimeout(function(){ beep(1320,130,'sine'); },70);
+  }
+  function playFailSound(){
+    beep(320,110,'sawtooth');
+    setTimeout(function(){ beep(150,170,'sawtooth'); },90);
+  }
+
   function cameraSupportError(){
     var isSecure=window.isSecureContext;
     var proto=location.protocol;
@@ -598,7 +607,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
       phase='idle';
       setDisc('falsestart');
       instruction.textContent='התחלה מוקדמת! חכו לאיתות';
-      beep(200,180,'sawtooth');
+      playFailSound();
       vibrate([30,40,30]);
       await sleep(1300);
       return {falseStart:true};
@@ -622,7 +631,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
         phase='idle';
         setDisc('caught');
         instruction.textContent='עצרת בזמן!';
-        beep(1300,90,'sine');
+        playSuccessSound();
         vibrate(20);
         await sleep(900);
         return {nogo:true,success:true};
@@ -630,41 +639,68 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
         phase='idle';
         setDisc('falsestart');
         instruction.textContent='זה היה איתות לעצירה - אסור להגיב';
-        beep(180,200,'sawtooth');
+        playFailSound();
         vibrate([30,40,30]);
         await sleep(1300);
         return {nogo:true,success:false};
       }
     }
 
-    // GO
+    // REACT (single or combo - every flash needs its own reaction)
     setDisc(signalId);
-    var t0=performance.now();
-    phase='react';
-    playSignal(signalId,combo);
-    var caughtPromise=new Promise(function(res){ window.__onCaught=res; });
-    var timeoutPromise=sleep(3000).then(function(){return 'timeout';});
-    var raceResult=await Promise.race([caughtPromise,timeoutPromise]);
-    window.__onCaught=null;
-    if(aborted) return null;
+    var hitTimes=[];
+    var catchStamps=[];
+    for(var hitIdx=0;hitIdx<combo;hitIdx++){
+      await playSignal(signalId,1);
+      var tFlash=performance.now();
+      phase='react';
+      var caughtPromise=new Promise(function(res){ window.__onCaught=res; });
+      var timeoutPromise=sleep(3000).then(function(){return 'timeout';});
+      var raceResult=await Promise.race([caughtPromise,timeoutPromise]);
+      window.__onCaught=null;
+      if(aborted) return null;
 
-    if(raceResult==='timeout'){
+      if(raceResult==='timeout'){
+        hitTimes.push(null);
+      } else {
+        var tCatch=performance.now();
+        hitTimes.push(tCatch-tFlash);
+        catchStamps.push(tCatch);
+      }
       phase='idle';
+      if(hitIdx<combo-1){ await sleep(140); }
+    }
+
+    if(hitTimes[0]==null){
       instruction.textContent='לא זוהתה תנועה';
       setDisc('breathe');
+      playFailSound();
+      vibrate([25,50,25]);
       await sleep(1000);
       return {timeout:true};
     }
 
-    var reaction=performance.now()-t0;
-    phase='idle';
+    var gaps=[];
+    for(var g=1;g<catchStamps.length;g++){ gaps.push(catchStamps[g]-catchStamps[g-1]); }
+
     setDisc('caught');
-    var txt=fmtSec(reaction);
-    instruction.innerHTML='זמן תגובה: <span class="timeval" dir="ltr">'+txt+'</span>';
-    beep(1200,90,'sine');
-    vibrate(20);
-    await sleep(1100);
-    return {time:reaction};
+    var displayTxt;
+    if(hitTimes.length>1){
+      var segs=[fmtSec(hitTimes[0])];
+      var gi=0;
+      for(var si=1;si<hitTimes.length;si++){
+        if(hitTimes[si]==null){ segs.push('פספוס'); }
+        else { segs.push('+'+(gaps[gi]/1000).toFixed(3)+'s'); gi++; }
+      }
+      displayTxt=segs.join(' · ');
+    } else {
+      displayTxt=fmtSec(hitTimes[0]);
+    }
+    instruction.innerHTML='זמן תגובה: <span class="timeval" dir="ltr" style="font-size:'+(hitTimes.length>1?'26px':'38px')+'">'+displayTxt+'</span>';
+    if(hitTimes.indexOf(null)!==-1){ playFailSound(); vibrate([20,40,20]); }
+    else { playSuccessSound(); vibrate(20); }
+    await sleep(1300);
+    return {time:hitTimes[0],times:hitTimes,gaps:gaps,combo:combo};
   }
 
   async function runTraining(){
@@ -706,7 +742,17 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
       var track=document.createElement('div'); track.className='bar-track';
       var fill=document.createElement('div'); fill.className='bar-fill';
       var tval=document.createElement('div'); tval.className='rtime';
-      if(r && r.time){
+      if(r && r.times && r.times.length>1){
+        fill.style.width=Math.max(6,((r.times[0]||0)/maxTime)*100)+'%';
+        var segs=[r.times[0]==null?'✗':fmtSec(r.times[0])];
+        var gi=0;
+        for(var si=1;si<r.times.length;si++){
+          if(r.times[si]==null){ segs.push('✗'); }
+          else { segs.push(r.gaps&&r.gaps[gi]!=null? '+'+(r.gaps[gi]/1000).toFixed(3)+'s' : fmtSec(r.times[si])); gi++; }
+        }
+        tval.textContent=segs.join(' · ');
+        tval.style.fontSize='11px';
+      } else if(r && r.time){
         fill.style.width=Math.max(6,(r.time/maxTime)*100)+'%';
         tval.textContent=fmtSec(r.time);
       } else if(r && r.nogo){
