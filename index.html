@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- אימון מהירות תגובה - גרסה v0.1 -->
+<!-- אימון מהירות תגובה - גרסה v0.2 -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>אימון מהירות תגובה v0.1</title>
+<title>אימון מהירות תגובה v0.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -172,7 +172,7 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>מהירות תגובה <span class="version-badge">v0.1</span></h1>
+    <h1>מהירות תגובה <span class="version-badge">v0.2</span></h1>
     <p>אימון תגובה בזיהוי תנועה דרך המצלמה</p>
   </div>
 
@@ -197,7 +197,7 @@ body{
 
   <div class="demo-row">
     <div class="demo-disc" style="animation-duration:6s;"></div>
-    <div class="demo-text">העיגול עוקב אחרי הפנים שלכם בזמן אמת. אדום/כתום = מתחילים קטן וגדלים עד כיסוי מלא של המסך - תגיבו מיד. כחול/טורקיז = מופיעים בגודל קבוע - הישארו קפואים. לפעמים יגיע פעמיים או שלוש ברצף. אין התרעה מראש.</div>
+    <div class="demo-text">העיגול עוקב אחרי הפנים שלכם בזמן אמת. אדום/כתום = מתחילים קטן וגדלים עד כיסוי מלא של המסך - תגיבו מיד. כחול/טורקיז = מופיעים בגודל קבוע - הישארו קפואים לגמרי, בלי שום תזוזה. אין התרעה מראש.</div>
   </div>
 
   <div class="error-box" id="error-box"></div>
@@ -521,6 +521,16 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   }
 
   var PIXEL_DIFF_THRESHOLD=16;
+  function getROI(){
+    if(!lastFaceCenter || !video.videoWidth || !video.videoHeight) return null;
+    var sx=canvas.width/video.videoWidth, sy=canvas.height/video.videoHeight;
+    var cx=lastFaceCenter.x*sx, cy=lastFaceCenter.y*sy;
+    var rw=canvas.width*0.68, rh=canvas.height*0.68;
+    var x0=Math.max(0,Math.round(cx-rw/2)), x1=Math.min(canvas.width,Math.round(cx+rw/2));
+    var y0=Math.max(0,Math.round(cy-rh/2)), y1=Math.min(canvas.height,Math.round(cy+rh/2));
+    if(x1-x0<8 || y1-y0<8) return null;
+    return {x0:x0,x1:x1,y0:y0,y1:y1};
+  }
   function computeDiff(){
     ctx.drawImage(video,0,0,canvas.width,canvas.height);
     var frame=ctx.getImageData(0,0,canvas.width,canvas.height).data;
@@ -529,14 +539,27 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
     for(var i=0,p=0;i<frame.length;i+=4,p++){
       luma[p]=(frame[i]+frame[i+1]+frame[i+2])/3;
     }
-    var changed=0;
+    var changed=0,total=0;
     if(lastLuma){
-      for(var j=0;j<n;j++){
-        if(Math.abs(luma[j]-lastLuma[j])>PIXEL_DIFF_THRESHOLD) changed++;
+      var roi=getROI();
+      if(roi){
+        for(var y=roi.y0;y<roi.y1;y++){
+          var rowBase=y*canvas.width;
+          for(var x=roi.x0;x<roi.x1;x++){
+            var idx=rowBase+x;
+            if(Math.abs(luma[idx]-lastLuma[idx])>PIXEL_DIFF_THRESHOLD) changed++;
+            total++;
+          }
+        }
+      } else {
+        for(var j=0;j<n;j++){
+          if(Math.abs(luma[j]-lastLuma[j])>PIXEL_DIFF_THRESHOLD) changed++;
+        }
+        total=n;
       }
     }
     lastLuma=luma;
-    return (changed/n)*100;
+    return total? (changed/total)*100 : 0;
   }
 
   var frameCounter=0;
@@ -618,7 +641,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
 
     var signalId=pickSignalType(difficulty);
     var cfg=SIGNAL_TYPES[signalId];
-    var combo=cfg.action==='react'? pickCombo(difficulty) : 1;
+    var combo=1;
 
     if(cfg.action==='freeze'){
       setDisc(signalId);
