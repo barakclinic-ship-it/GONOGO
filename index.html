@@ -18,6 +18,7 @@
   --text-dim:#8A93A1;
   --idle:#C9A227;
   --go:#FF3B30;
+  --nogo:#2F8FE0;
   --success:#3DDC97;
   --false:#8B7CF6;
   --border:rgba(237,234,226,0.08);
@@ -58,10 +59,13 @@ body{
 .demo-disc{width:44px;height:44px;min-width:44px;border-radius:50%;background:var(--idle);animation:demo-cycle 3.6s ease-in-out infinite;}
 .demo-text{font-size:12px;color:var(--text-dim);line-height:1.6;}
 @keyframes demo-cycle{
-  0%,48%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
-  53%{background:var(--go);box-shadow:0 0 0 7px rgba(255,59,48,0.28);transform:scale(1.05);}
-  70%{background:var(--success);box-shadow:0 0 0 7px rgba(61,220,151,0.28);transform:scale(1);}
-  96%,100%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
+  0%,32%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
+  37%{background:var(--go);box-shadow:0 0 0 7px rgba(255,59,48,0.28);transform:scale(1.08);}
+  50%,56%{background:var(--success);box-shadow:0 0 0 7px rgba(61,220,151,0.28);transform:scale(1);}
+  64%,72%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
+  78%{background:var(--nogo);box-shadow:0 0 0 7px rgba(47,143,224,0.28);transform:scale(1.08);}
+  90%,96%{background:var(--success);box-shadow:0 0 0 7px rgba(61,220,151,0.28);transform:scale(1);}
+  100%{background:var(--idle);box-shadow:0 0 0 0 rgba(201,162,39,0);transform:scale(1);}
 }
 .error-box{display:none;font-size:13px;color:var(--go);background:rgba(255,59,48,0.1);border:1px solid var(--go);border-radius:12px;padding:12px 14px;line-height:1.6;}
 .btn-primary{
@@ -100,6 +104,13 @@ body{
   position:absolute;inset:0;z-index:2;
   pointer-events:none;
 }
+.burst-wrap{
+  position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden;
+}
+.burst{
+  position:absolute;border-radius:50%;transform:translate(-50%,-50%);
+  will-change:transform,opacity;
+}
 .disc-pos{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   transition:left .25s ease, top .25s ease;
@@ -116,6 +127,7 @@ body{
   50%{transform:scale(1.08);opacity:1;}
 }
 .disc.go{background:var(--go);box-shadow:0 0 0 14px rgba(255,59,48,0.25);animation:none;transform:scale(1);}
+.disc.nogo{background:var(--nogo);box-shadow:0 0 0 14px rgba(47,143,224,0.25);animation:none;transform:scale(1);}
 .disc.caught{background:var(--success);box-shadow:0 0 0 14px rgba(61,220,151,0.25);animation:pop .3s ease;}
 .disc.falsestart{background:var(--false);box-shadow:0 0 0 14px rgba(139,124,246,0.25);animation:shake .3s ease;}
 @keyframes pop{0%{transform:scale(0.8);}60%{transform:scale(1.12);}100%{transform:scale(1);}}
@@ -144,6 +156,8 @@ body{
 .round-row .bar-track{flex:1;height:8px;border-radius:6px;background:var(--surface2);overflow:hidden;}
 .round-row .bar-fill{height:100%;border-radius:6px;background:var(--success);}
 .round-row.fs .bar-fill{background:var(--false);width:100% !important;}
+.round-row.nogo .bar-fill{width:100% !important;}
+.round-row.nogo .bar-fill{width:100% !important;}
 .round-row .rtime{font-size:14px;font-weight:800;direction:ltr;min-width:56px;text-align:left;}
 .actions-row{display:flex;gap:10px;}
 .actions-row .btn-secondary{flex:1;}
@@ -177,8 +191,8 @@ body{
   </div>
 
   <div class="demo-row">
-    <div class="demo-disc"></div>
-    <div class="demo-text">עמדו מול המצלמה. העיגול עוקב אחרי הפנים שלכם. צהוב = המתנה, אדום = תגיבו מיד (זוזו - אגרוף/בעיטה/כל תנועה), ירוק = תפסתם. אין התרעה מראש - זו בדיוק הנקודה.</div>
+    <div class="demo-disc" style="animation-duration:6s;"></div>
+    <div class="demo-text">העיגול עוקב אחרי הפנים שלכם ומתפוצץ למסך מלא. אדום = תגיבו מיד (זוזו!). כחול = איתות דמה - הישארו קפואים. לפעמים יגיע פעמיים או שלוש ברצף. אין התרעה מראש.</div>
   </div>
 
   <div class="error-box" id="error-box"></div>
@@ -196,6 +210,7 @@ body{
   </div>
 
   <div class="disc-wrap"><div class="disc-pos" id="discPos"><div class="disc breathe" id="disc"></div></div></div>
+  <div class="burst-wrap" id="burstWrap"></div>
 
   <div class="bottom-bar">
     <div class="instruction" id="instruction"></div>
@@ -239,6 +254,7 @@ body{
   var ctx=canvas.getContext('2d',{willReadFrequently:true});
   var disc=document.getElementById('disc');
   var discPos=document.getElementById('discPos');
+  var burstWrap=document.getElementById('burstWrap');
   var instruction=document.getElementById('instruction');
   var roundPill=document.getElementById('round-pill');
   var cancelBtn=document.getElementById('cancel-btn');
@@ -277,6 +293,15 @@ body{
   var lastFaceCenter=null;
   var lastFaceTime=0;
   var FACE_STALE_MS=1400;
+  var currentDiscX=0,currentDiscY=0;
+
+  var NOGO_PROB={easy:0.15,medium:0.22,hard:0.3};
+  function pickCombo(diff){
+    var r=Math.random();
+    if(diff==='hard'){ if(r<0.45) return 1; if(r<0.75) return 2; return 3; }
+    if(diff==='medium'){ if(r<0.6) return 1; if(r<0.85) return 2; return 3; }
+    return (r<0.75)?1:(r<0.93?2:3);
+  }
 
   function sleep(ms){return new Promise(function(res){setTimeout(res,ms);});}
 
@@ -342,22 +367,55 @@ body{
   }
 
   function updateDiscPosition(){
+    var dw=video.clientWidth||trainingScreen.clientWidth,dh=video.clientHeight||trainingScreen.clientHeight;
     var vw=video.videoWidth,vh=video.videoHeight;
-    var dw=video.clientWidth,dh=video.clientHeight;
-    if(!vw||!vh||!dw||!dh||!lastFaceCenter){
-      discPos.style.left='50%'; discPos.style.top='50%';
-      return;
+    var sx,sy;
+    if(!vw||!vh||!lastFaceCenter){
+      sx=dw/2; sy=dh*0.42;
+    } else {
+      var scale=Math.max(dw/vw,dh/vh);
+      var contentW=vw*scale,contentH=vh*scale;
+      var offsetX=(contentW-dw)/2,offsetY=(contentH-dh)/2;
+      sx=lastFaceCenter.x*scale-offsetX;
+      sy=lastFaceCenter.y*scale-offsetY;
+      if(facing==='user'){ sx=dw-sx; }
+      sx=Math.max(0,Math.min(dw,sx));
+      sy=Math.max(0,Math.min(dh,sy));
     }
-    var scale=Math.max(dw/vw,dh/vh);
-    var contentW=vw*scale,contentH=vh*scale;
-    var offsetX=(contentW-dw)/2,offsetY=(contentH-dh)/2;
-    var sx=lastFaceCenter.x*scale-offsetX;
-    var sy=lastFaceCenter.y*scale-offsetY;
-    if(facing==='user'){ sx=dw-sx; }
-    sx=Math.max(0,Math.min(dw,sx));
-    sy=Math.max(0,Math.min(dh,sy));
+    currentDiscX=sx; currentDiscY=sy;
     discPos.style.left=sx+'px';
     discPos.style.top=sy+'px';
+  }
+
+  function spawnBurst(colorVar){
+    var dw=trainingScreen.clientWidth,dh=trainingScreen.clientHeight;
+    var diag=Math.sqrt(dw*dw+dh*dh);
+    var size=diag*2.3;
+    var el=document.createElement('div');
+    el.className='burst';
+    el.style.left=currentDiscX+'px';
+    el.style.top=currentDiscY+'px';
+    el.style.width=size+'px';
+    el.style.height=size+'px';
+    el.style.background='var(--'+colorVar+')';
+    burstWrap.appendChild(el);
+    try{
+      var anim=el.animate([
+        {transform:'translate(-50%,-50%) scale(0.006)',opacity:0.92},
+        {transform:'translate(-50%,-50%) scale(1)',opacity:1,offset:0.82},
+        {transform:'translate(-50%,-50%) scale(1)',opacity:0}
+      ],{duration:430,easing:'cubic-bezier(.14,.8,.22,1)'});
+      anim.onfinish=function(){ el.remove(); };
+    }catch(e){ setTimeout(function(){el.remove();},450); }
+  }
+
+  async function playSignal(comboCount,isNoGo){
+    var colorVar=isNoGo?'nogo':'go';
+    for(var i=0;i<comboCount;i++){
+      spawnBurst(colorVar);
+      if(isNoGo){ beep(500,120,'triangle'); vibrate(25); } else { beep(880,100,'square'); vibrate(35); }
+      if(i<comboCount-1){ await sleep(190); }
+    }
   }
 
   async function detectFaceLoop(){
@@ -387,7 +445,7 @@ body{
   function stopFaceTracking(){
     if(faceIntervalId){ clearInterval(faceIntervalId); faceIntervalId=null; }
     lastFaceCenter=null;
-    discPos.style.left='50%'; discPos.style.top='50%';
+    updateDiscPosition();
   }
 
   function computeDiff(){
@@ -421,6 +479,10 @@ body{
       } else if(phase==='go'){
         if(d>threshold && window.__onCaught){
           var fn2=window.__onCaught; window.__onCaught=null; phase='idle'; fn2();
+        }
+      } else if(phase==='nogo'){
+        if(d>threshold && window.__onNoGoMove){
+          var fn3=window.__onNoGoMove; window.__onNoGoMove=null; phase='idle'; fn3();
         }
       }
     }
@@ -477,13 +539,43 @@ body{
       return {falseStart:true};
     }
 
+    var isNoGo=Math.random()<NOGO_PROB[difficulty];
+    var combo=pickCombo(difficulty);
+
+    if(isNoGo){
+      setDisc('nogo');
+      phase='nogo';
+      playSignal(combo,true);
+      var movedPromise=new Promise(function(res){ window.__onNoGoMove=res; });
+      var heldPromise=sleep(900).then(function(){return 'held';});
+      var raceN=await Promise.race([movedPromise,heldPromise]);
+      window.__onNoGoMove=null;
+      if(aborted) return null;
+
+      if(raceN==='held'){
+        phase='idle';
+        setDisc('caught');
+        instruction.textContent='עצרת בזמן!';
+        beep(1300,90,'sine');
+        vibrate(20);
+        await sleep(900);
+        return {nogo:true,success:true};
+      } else {
+        phase='idle';
+        setDisc('falsestart');
+        instruction.textContent='זה היה איתות כחול - אסור להגיב';
+        beep(180,200,'sawtooth');
+        vibrate([30,40,30]);
+        await sleep(1300);
+        return {nogo:true,success:false};
+      }
+    }
+
     // GO
     setDisc('go');
-    instruction.textContent='עכשיו!';
-    beep(880,110,'square');
-    vibrate(40);
     var t0=performance.now();
     phase='go';
+    playSignal(combo,false);
     var caughtPromise=new Promise(function(res){ window.__onCaught=res; });
     var timeoutPromise=sleep(3000).then(function(){return 'timeout';});
     var raceResult=await Promise.race([caughtPromise,timeoutPromise]);
@@ -527,6 +619,8 @@ body{
 
     var validTimes=results.filter(function(r){return r && r.time;}).map(function(r){return r.time;});
     var fsCount=results.filter(function(r){return r && r.falseStart;}).length;
+    var nogoRounds=results.filter(function(r){return r && r.nogo;});
+    var nogoSuccess=nogoRounds.filter(function(r){return r.success;}).length;
 
     var avg=validTimes.length? validTimes.reduce(function(a,b){return a+b;},0)/validTimes.length : 0;
     var best=validTimes.length? Math.min.apply(null,validTimes):0;
@@ -549,6 +643,10 @@ body{
       if(r && r.time){
         fill.style.width=Math.max(6,(r.time/maxTime)*100)+'%';
         tval.textContent=fmtSec(r.time);
+      } else if(r && r.nogo){
+        row.classList.add('nogo');
+        fill.style.background=r.success? 'var(--success)':'var(--false)';
+        tval.textContent=r.success? 'עצרת ✓':'טעות';
       } else if(r && r.falseStart){
         row.classList.add('fs');
         tval.textContent='מוקדם';
@@ -561,7 +659,7 @@ body{
       list.appendChild(row);
     });
 
-    window.__lastResults={avg:avg,best:best,worst:worst,fsCount:fsCount,rounds:rounds,validCount:validTimes.length};
+    window.__lastResults={avg:avg,best:best,worst:worst,fsCount:fsCount,rounds:rounds,validCount:validTimes.length,nogoTotal:nogoRounds.length,nogoSuccess:nogoSuccess};
   }
 
   function stopCamera(){
@@ -623,7 +721,8 @@ body{
     var txt='אימון מהירות תגובה 🥋\nסבבים: '+d.rounds+' (תקינים: '+d.validCount+')\n'+
       'ממוצע: '+(d.avg? (d.avg/1000).toFixed(3):'-')+' שניות\n'+
       'הכי מהיר: '+(d.best? (d.best/1000).toFixed(3):'-')+' שניות\n'+
-      'התחלות מוקדמות: '+d.fsCount;
+      'התחלות מוקדמות: '+d.fsCount+
+      (d.nogoTotal? '\nעצירות (איתות כחול): '+d.nogoSuccess+'/'+d.nogoTotal : '');
     if(navigator.share){
       try{ await navigator.share({title:'תוצאת אימון תגובה',text:txt}); }catch(e){}
     } else {
