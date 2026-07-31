@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- אימון מהירות תגובה - גרסה v0.2 -->
+<!-- אימון מהירות תגובה - גרסה v0.4 -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>אימון מהירות תגובה v0.2</title>
+<title>אימון מהירות תגובה v0.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -120,7 +120,7 @@ body{
   transition:left .25s ease, top .25s ease;
 }
 .disc{
-  width:34vw;height:34vw;max-width:170px;max-height:170px;border-radius:50%;
+  width:40vw;height:40vw;max-width:195px;max-height:195px;border-radius:50%;
   background:var(--idle);
   box-shadow:0 0 0 8px rgba(201,162,39,0.15);
   transition:background .08s ease, box-shadow .08s ease;
@@ -172,17 +172,17 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>מהירות תגובה <span class="version-badge">v0.2</span></h1>
+    <h1>מהירות תגובה <span class="version-badge">v0.4</span></h1>
     <p>אימון תגובה בזיהוי תנועה דרך המצלמה</p>
   </div>
 
   <div class="setting-group">
-    <div class="setting-label">מספר סבבים</div>
-    <div class="chip-row" id="rounds-chips">
-      <div class="chip" data-val="3">3</div>
-      <div class="chip active" data-val="5">5</div>
-      <div class="chip" data-val="8">8</div>
-      <div class="chip" data-val="10">10</div>
+    <div class="setting-label">משך אימון</div>
+    <div class="chip-row" id="duration-chips">
+      <div class="chip" data-val="30">30 שניות</div>
+      <div class="chip active" data-val="60">דקה</div>
+      <div class="chip" data-val="120">2 דקות</div>
+      <div class="chip" data-val="180">3 דקות</div>
     </div>
   </div>
 
@@ -197,7 +197,7 @@ body{
 
   <div class="demo-row">
     <div class="demo-disc" style="animation-duration:6s;"></div>
-    <div class="demo-text">העיגול עוקב אחרי הפנים שלכם בזמן אמת. אדום/כתום = מתחילים קטן וגדלים עד כיסוי מלא של המסך - תגיבו מיד. כחול/טורקיז = מופיעים בגודל קבוע - הישארו קפואים לגמרי, בלי שום תזוזה. אין התרעה מראש.</div>
+    <div class="demo-text">העיגול עוקב אחרי הפנים שלכם בזמן אמת. אדום = מתחיל קטן וגדל עד כיסוי מלא של המסך - תגיבו מיד. כחול/טורקיז = מופיעים בגודל קבוע - הישארו קפואים לגמרי, בלי שום תזוזה. אין התרעה מראש.</div>
   </div>
 
   <div class="error-box" id="error-box"></div>
@@ -210,7 +210,7 @@ body{
   <canvas id="proc-canvas" width="96" height="72" style="display:none;"></canvas>
 
   <div class="top-bar">
-    <div class="round-pill" id="round-pill">סבב 1/5</div>
+    <div class="round-pill" id="round-pill">סבב 1</div>
     <button class="icon-btn" id="cancel-btn" aria-label="ביטול">✕</button>
   </div>
 
@@ -250,7 +250,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   var trainingScreen=document.getElementById('screen-training');
   var resultsScreen=document.getElementById('screen-results');
 
-  var roundsChips=document.getElementById('rounds-chips');
+  var durationChips=document.getElementById('duration-chips');
   var diffChips=document.getElementById('difficulty-chips');
   var startBtn=document.getElementById('start-btn');
   var errorBox=document.getElementById('error-box');
@@ -267,14 +267,14 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   var loadingOverlay=document.getElementById('loading-overlay');
   var loadingText=document.getElementById('loading-text');
 
-  var rounds=5;
+  var sessionSeconds=60;
   var difficulty='medium';
   var DELAY_RANGES={easy:[2200,3800],medium:[1300,3200],hard:[600,2200]};
 
-  roundsChips.addEventListener('click',function(e){
+  durationChips.addEventListener('click',function(e){
     var chip=e.target.closest('.chip'); if(!chip) return;
-    Array.prototype.forEach.call(roundsChips.children,function(c){c.classList.remove('active');});
-    chip.classList.add('active'); rounds=parseInt(chip.dataset.val,10);
+    Array.prototype.forEach.call(durationChips.children,function(c){c.classList.remove('active');});
+    chip.classList.add('active'); sessionSeconds=parseInt(chip.dataset.val,10);
   });
   diffChips.addEventListener('click',function(e){
     var chip=e.target.closest('.chip'); if(!chip) return;
@@ -320,14 +320,13 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
 
   var SIGNAL_TYPES={
     go:   {colorVar:'go',   behavior:'grow',  action:'react'},
-    go2:  {colorVar:'go2',  behavior:'grow',  action:'react'},
     nogo: {colorVar:'nogo', behavior:'fixed', action:'freeze'},
     nogo2:{colorVar:'nogo2',behavior:'fixed', action:'freeze'}
   };
   var SIGNAL_WEIGHTS={
-    easy:  {go:70,go2:10,nogo:15,nogo2:5},
-    medium:{go:55,go2:15,nogo:20,nogo2:10},
-    hard:  {go:40,go2:20,nogo:22,nogo2:18}
+    easy:  {go:80,nogo:15,nogo2:5},
+    medium:{go:70,nogo:20,nogo2:10},
+    hard:  {go:60,nogo:22,nogo2:18}
   };
   function pickSignalType(diff){
     var weights=SIGNAL_WEIGHTS[diff]||SIGNAL_WEIGHTS.medium;
@@ -589,6 +588,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   }
 
   function fmtSec(ms){ return (ms/1000).toFixed(3)+' s'; }
+  function fmtClock(sec){ sec=Math.max(0,Math.round(sec)); var m=Math.floor(sec/60),s=sec%60; return m+':'+(s<10?'0':'')+s; }
 
   var results=[];
 
@@ -608,8 +608,8 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
     if(cls) disc.classList.add(cls);
   }
 
-  async function runRound(idx,total){
-    roundPill.textContent='סבב '+idx+'/'+total;
+  async function runRound(idx,remainingSec){
+    roundPill.textContent='סבב '+idx+' • נותרו '+fmtClock(Math.max(0,remainingSec));
     instruction.textContent='';
     setDisc('breathe');
     await runCalibration();
@@ -732,8 +732,12 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   async function runTraining(){
     aborted=false;
     results=[];
-    for(var i=1;i<=rounds;i++){
-      var r=await runRound(i,rounds);
+    var startT=performance.now();
+    var idx=0;
+    while((performance.now()-startT)/1000<sessionSeconds){
+      idx++;
+      var remaining=sessionSeconds-(performance.now()-startT)/1000;
+      var r=await runRound(idx,remaining);
       if(aborted) return;
       results.push(r);
     }
@@ -797,7 +801,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
       list.appendChild(row);
     });
 
-    window.__lastResults={avg:avg,best:best,worst:worst,fsCount:fsCount,rounds:rounds,validCount:validTimes.length,nogoTotal:nogoRounds.length,nogoSuccess:nogoSuccess};
+    window.__lastResults={avg:avg,best:best,worst:worst,fsCount:fsCount,rounds:results.length,sessionSeconds:sessionSeconds,validCount:validTimes.length,nogoTotal:nogoRounds.length,nogoSuccess:nogoSuccess};
   }
 
   function stopCamera(){
@@ -856,7 +860,7 @@ import { FaceDetector as MPFaceDetector, FilesetResolver } from "https://cdn.jsd
   document.getElementById('share-btn').addEventListener('click',async function(){
     var d=window.__lastResults;
     if(!d) return;
-    var txt='אימון מהירות תגובה 🥋\nסבבים: '+d.rounds+' (תקינים: '+d.validCount+')\n'+
+    var txt='אימון מהירות תגובה 🥋\nמשך: '+fmtClock(d.sessionSeconds)+' | סבבים: '+d.rounds+' (תקינים: '+d.validCount+')\n'+
       'ממוצע: '+(d.avg? (d.avg/1000).toFixed(3):'-')+' שניות\n'+
       'הכי מהיר: '+(d.best? (d.best/1000).toFixed(3):'-')+' שניות\n'+
       'התחלות מוקדמות: '+d.fsCount+
