@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Reaction Speed Trainer - version v3.3 -->
+<!-- Reaction Speed Trainer - version v3.4 -->
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>Reaction Speed Trainer v3.3</title>
+<title>Reaction Speed Trainer v3.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -197,7 +197,7 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>Reaction Speed <span class="version-badge">v3.3</span></h1>
+    <h1>Reaction Speed <span class="version-badge">v3.4</span></h1>
     <p>Reaction training using motion detection through the camera</p>
   </div>
 
@@ -219,6 +219,14 @@ body{
       <div class="chip" data-val="easy">Easy</div>
       <div class="chip active" data-val="medium">Medium</div>
       <div class="chip" data-val="hard">Hard</div>
+    </div>
+  </div>
+
+  <div class="setting-group">
+    <div class="setting-label">Touch Precision</div>
+    <div class="chip-row" id="touch-chips">
+      <div class="chip active" data-val="off">Off</div>
+      <div class="chip" data-val="on">On</div>
     </div>
   </div>
 
@@ -369,6 +377,13 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     var chip=e.target.closest('.chip'); if(!chip) return;
     Array.prototype.forEach.call(diffChips.children,function(c){c.classList.remove('active');});
     chip.classList.add('active'); difficulty=chip.dataset.val;
+  });
+  var touchChips=document.getElementById('touch-chips');
+  var touchPrecisionEnabled=false;
+  touchChips.addEventListener('click',function(e){
+    var chip=e.target.closest('.chip'); if(!chip) return;
+    Array.prototype.forEach.call(touchChips.children,function(c){c.classList.remove('active');});
+    chip.classList.add('active'); touchPrecisionEnabled=(chip.dataset.val==='on');
   });
 
   var demoDisc=document.getElementById('demoDisc');
@@ -1357,6 +1372,18 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     stopCamera();
     trainingScreen.classList.add('hidden');
     setupScreen.classList.remove('hidden');
+  });
+
+  trainingScreen.addEventListener('pointerdown',function(e){
+    if(!touchPrecisionEnabled) return;
+    if(e.target.closest('#cancel-btn')) return;
+    if(phase==='wait' && window.__onFalseStart){
+      var fn=window.__onFalseStart; window.__onFalseStart=null; phase='idle'; fn();
+    } else if(phase==='react' && window.__onCaught){
+      var fn2=window.__onCaught; window.__onCaught=null; phase='idle'; fn2();
+    } else if(phase==='freeze' && window.__onNoGoMove){
+      var fn3=window.__onNoGoMove; window.__onNoGoMove=null; phase='idle'; fn3();
+    }
   });
 
   document.getElementById('restart-btn').addEventListener('click',async function(){
