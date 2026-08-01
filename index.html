@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Reaction Speed Trainer - version v2.6 -->
+<!-- Reaction Speed Trainer - version v3.3 -->
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>Reaction Speed Trainer v2.6</title>
+<title>Reaction Speed Trainer v3.3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -42,7 +42,7 @@ body{
 .hidden{display:none !important;}
 
 /* ---------- setup ---------- */
-#screen-setup{padding:24px 20px;overflow-y:auto;justify-content:center;gap:28px;}
+#screen-setup{padding:24px 20px;overflow-y:auto;justify-content:flex-start;gap:28px;}
 .title-block{text-align:center;}
 .title-block h1{font-size:clamp(24px,7vw,30px);font-weight:900;margin:0 0 4px;letter-spacing:-0.5px;}
 .version-badge{font-size:11px;font-weight:800;color:var(--text-dim);background:var(--surface);border:1px solid var(--border);border-radius:100px;padding:2px 9px;direction:ltr;display:inline-block;vertical-align:middle;margin-right:6px;}
@@ -197,16 +197,18 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>Reaction Speed <span class="version-badge">v2.6</span></h1>
+    <h1>Reaction Speed <span class="version-badge">v3.3</span></h1>
     <p>Reaction training using motion detection through the camera</p>
   </div>
 
   <div class="setting-group">
     <div class="setting-label">Session Duration</div>
-    <div class="chip-row" id="duration-chips">
+    <div class="chip-row" id="duration-chips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
       <div class="chip" data-val="30">30 sec</div>
       <div class="chip active" data-val="60">1 min</div>
+      <div class="chip" data-val="90">1.5 min</div>
       <div class="chip" data-val="120">2 min</div>
+      <div class="chip" data-val="150">2.5 min</div>
       <div class="chip" data-val="180">3 min</div>
     </div>
   </div>
@@ -226,17 +228,9 @@ body{
     <div class="demo-label" id="demoLabel">STAY</div>
   </div>
 
-  <button class="btn-secondary" id="manageSignalsBtn" style="width:100%;">Manage Signals</button>
+  <div style="font-weight:800;font-size:16px;margin:6px 0 4px;">Signals</div>
 
-  <div class="error-box" id="error-box"></div>
-
-  <button class="btn-primary" id="start-btn">Start Training</button>
-</div>
-
-<div id="screen-signals" class="screen hidden" style="padding:20px 20px calc(20px + env(safe-area-inset-bottom));overflow-y:auto;">
-  <div style="font-weight:800;font-size:16px;margin-bottom:14px;">Manage Signals</div>
-
-  <div id="signalsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;"></div>
+  <div id="signalsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px;"></div>
 
   <div class="setting-group">
     <div class="setting-label">Add New Signal</div>
@@ -268,13 +262,15 @@ body{
         <div class="chip" data-val="ankle">Ankles</div>
       </div>
     </div>
-    <button class="btn-primary" id="addSignalBtn" style="background:var(--surface2);">Add Signal</button>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-primary" id="addSignalBtn" style="flex:3;background:var(--surface2);">Add Signal</button>
+      <button class="btn-secondary" id="resetSignalsBtn" style="flex:1;padding:0 10px;font-size:13px;">Reset</button>
+    </div>
   </div>
 
-  <div style="display:flex;gap:10px;align-items:stretch;margin-top:16px;">
-    <button class="btn-primary" id="signalsBackBtn" style="flex:3;background:var(--surface2);">← Back</button>
-    <button class="btn-secondary" id="resetSignalsBtn" style="flex:1;padding:0 10px;font-size:13px;">Reset</button>
-  </div>
+  <div class="error-box" id="error-box"></div>
+
+  <button class="btn-primary" id="start-btn">Start Training</button>
 </div>
 
 <div id="screen-training" class="screen hidden">
@@ -339,7 +335,6 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
   var setupScreen=document.getElementById('screen-setup');
   var trainingScreen=document.getElementById('screen-training');
   var resultsScreen=document.getElementById('screen-results');
-  var signalsScreen=document.getElementById('screen-signals');
 
   var durationChips=document.getElementById('duration-chips');
   var diffChips=document.getElementById('difficulty-chips');
@@ -401,8 +396,6 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
   }
   stepDemo();
 
-  var manageSignalsBtn=document.getElementById('manageSignalsBtn');
-  var signalsBackBtn=document.getElementById('signalsBackBtn');
   var signalsList=document.getElementById('signalsList');
   var colorPalette=document.getElementById('colorPalette');
   var selectedNewColor='#FF3B30';
@@ -428,6 +421,8 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     return joints.map(function(j){ return JOINT_LABELS[j]||j; }).join(' + ');
   }
 
+  var ALL_JOINT_KEYS=['head','shoulder','wrist','elbow','knee','ankle'];
+
   function updateJointSectionVisibility(){
     if(newSignalAction==='nogo'){
       jointSection.classList.add('hidden');
@@ -443,9 +438,9 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     addSignalBtn.textContent='Add Signal';
     newSignalName.value='';
     newSignalAction='go';
-    newSignalJoints=[];
+    newSignalJoints=ALL_JOINT_KEYS.slice();
     Array.prototype.forEach.call(newSignalTypeChips.children,function(c){c.classList.toggle('active',c.dataset.val==='go');});
-    Array.prototype.forEach.call(newSignalJointChips.children,function(c){c.classList.remove('active');});
+    Array.prototype.forEach.call(newSignalJointChips.children,function(c){c.classList.add('active');});
     updateJointSectionVisibility();
   }
 
@@ -475,7 +470,7 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
         newSignalName.value=s.name||'';
         newSignalAction=s.action;
         selectedNewColor=s.color;
-        newSignalJoints=(s.joints||[]).slice();
+        newSignalJoints=(s.joints && s.joints.length)? s.joints.slice() : ALL_JOINT_KEYS.slice();
         Array.prototype.forEach.call(newSignalTypeChips.children,function(c){ c.classList.toggle('active',c.dataset.val===s.action); });
         Array.prototype.forEach.call(colorPalette.children,function(c){ c.classList.toggle('selected',(c.dataset.color||'').toLowerCase()===(s.color||'').toLowerCase()); });
         Array.prototype.forEach.call(newSignalJointChips.children,function(c){ c.classList.toggle('active', newSignalJoints.indexOf(c.dataset.val)!==-1); });
@@ -489,16 +484,8 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     });
   }
 
-  manageSignalsBtn.addEventListener('click',function(){
-    resetSignalForm();
-    renderSignalsList();
-    setupScreen.classList.add('hidden');
-    signalsScreen.classList.remove('hidden');
-  });
-  signalsBackBtn.addEventListener('click',function(){
-    signalsScreen.classList.add('hidden');
-    setupScreen.classList.remove('hidden');
-  });
+  setTimeout(function(){ resetSignalForm(); renderSignalsList(); },0);
+
   newSignalTypeChips.addEventListener('click',function(e){
     var chip=e.target.closest('.chip'); if(!chip) return;
     Array.prototype.forEach.call(newSignalTypeChips.children,function(c){c.classList.remove('active');});
@@ -519,7 +506,10 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
   addSignalBtn.addEventListener('click',function(){
     var name=(newSignalName.value||'').trim();
     if(!name){ newSignalName.focus(); return; }
-    var joints=(newSignalAction==='nogo')? [] : newSignalJoints.slice();
+    var joints;
+    if(newSignalAction==='nogo'){ joints=[]; }
+    else if(newSignalJoints.length===0 || newSignalJoints.length===ALL_JOINT_KEYS.length){ joints=[]; }
+    else { joints=newSignalJoints.slice(); }
     if(editingSignalId){
       var idx=-1;
       for(var i=0;i<signals.length;i++){ if(signals[i].id===editingSignalId){ idx=i; break; } }
@@ -552,6 +542,14 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
   var aborted=false;
   var audioCtx=null;
 
+  var visionFilesetPromise=null;
+  function getVisionFileset(){
+    if(!visionFilesetPromise){
+      visionFilesetPromise=FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+    }
+    return visionFilesetPromise;
+  }
+
   var faceDetector=null;
   var faceDetectorReady=false;
   var faceDetectorLoading=false;
@@ -559,7 +557,7 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     if(faceDetector || faceDetectorLoading) return;
     faceDetectorLoading=true;
     try{
-      var vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+      var vision=await getVisionFileset();
       faceDetector=await MPFaceDetector.createFromOptions(vision,{
         baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite'},
         runningMode:'VIDEO'
@@ -570,7 +568,6 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     }
     faceDetectorLoading=false;
   }
-  ensureFaceDetector();
   var faceIntervalId=null;
   var lastFaceCenter=null;
   var lastFaceBox=null;
@@ -585,7 +582,7 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     if(poseLandmarker || poseLandmarkerLoading) return;
     poseLandmarkerLoading=true;
     try{
-      var vision2=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+      var vision2=await getVisionFileset();
       poseLandmarker=await PoseLandmarker.createFromOptions(vision2,{
         baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'},
         runningMode:'VIDEO',
@@ -597,7 +594,10 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     }
     poseLandmarkerLoading=false;
   }
-  ensurePoseLandmarker();
+  (async function initTrackingModels(){
+    await ensureFaceDetector();
+    await ensurePoseLandmarker();
+  })();
   var POSE_IDX={shoulder:[11,12],wrist:[15,16],elbow:[13,14],knee:[25,26],ankle:[27,28]};
   var lastJoints={shoulder:[],wrist:[],elbow:[],knee:[],ankle:[]};
   var lastJointsTime=0;
