@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<!-- Reaction Speed Trainer - version v3.4 -->
+<!-- Reaction Speed Trainer - version v3.5 -->
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#12151A">
-<title>Reaction Speed Trainer v3.4</title>
+<title>Reaction Speed Trainer v3.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -197,7 +197,7 @@ body{
 
 <div id="screen-setup" class="screen">
   <div class="title-block">
-    <h1>Reaction Speed <span class="version-badge">v3.4</span></h1>
+    <h1>Reaction Speed <span class="version-badge">v3.5</span></h1>
     <p>Reaction training using motion detection through the camera</p>
   </div>
 
@@ -241,38 +241,44 @@ body{
   <div id="signalsList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:6px;"></div>
 
   <div class="setting-group">
-    <div class="setting-label">Add New Signal</div>
-    <input type="text" id="newSignalName" placeholder="Name (e.g. Kick)" class="signal-name-input" style="width:100%;margin-bottom:12px;">
-    <div class="color-palette" id="colorPalette">
-      <div class="color-swatch selected" data-color="#FF3B30" style="background:#FF3B30;"></div>
-      <div class="color-swatch" data-color="#FF8A00" style="background:#FF8A00;"></div>
-      <div class="color-swatch" data-color="#FFD400" style="background:#FFD400;"></div>
-      <div class="color-swatch" data-color="#3DDC97" style="background:#3DDC97;"></div>
-      <div class="color-swatch" data-color="#17B3A3" style="background:#17B3A3;"></div>
-      <div class="color-swatch" data-color="#2F8FE0" style="background:#2F8FE0;"></div>
-      <div class="color-swatch" data-color="#8B7CF6" style="background:#8B7CF6;"></div>
-      <div class="color-swatch" data-color="#E85DC0" style="background:#E85DC0;"></div>
-      <div class="color-swatch" data-color="#8B5A2B" style="background:#8B5A2B;"></div>
-      <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;"></div>
+    <div class="setting-label" id="addSignalToggle" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <span>Add New Signal</span><span id="addSignalChevron">+</span>
     </div>
-    <div class="chip-row" id="newSignalType" style="margin-bottom:12px;">
-      <div class="chip active" data-val="go">GO (React)</div>
-      <div class="chip" data-val="nogo">NO-GO (Freeze)</div>
-    </div>
-    <div id="jointSection">
-      <div class="setting-label" style="margin-bottom:8px;">Detection Area (tap to toggle, multiple allowed)</div>
-      <div class="chip-row" id="newSignalJoint" style="margin-bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-        <div class="chip" data-val="head">Head</div>
-        <div class="chip" data-val="shoulder">Shoulders</div>
-        <div class="chip" data-val="wrist">Hands</div>
-        <div class="chip" data-val="elbow">Elbows</div>
-        <div class="chip" data-val="knee">Knees</div>
-        <div class="chip" data-val="ankle">Ankles</div>
+    <div id="addSignalDefaultSlot">
+      <div id="addSignalForm" class="hidden">
+        <input type="text" id="newSignalName" placeholder="Name (e.g. Kick)" class="signal-name-input" style="width:100%;margin:12px 0;">
+        <div class="color-palette" id="colorPalette">
+          <div class="color-swatch selected" data-color="#FF3B30" style="background:#FF3B30;"></div>
+          <div class="color-swatch" data-color="#FF8A00" style="background:#FF8A00;"></div>
+          <div class="color-swatch" data-color="#FFD400" style="background:#FFD400;"></div>
+          <div class="color-swatch" data-color="#3DDC97" style="background:#3DDC97;"></div>
+          <div class="color-swatch" data-color="#17B3A3" style="background:#17B3A3;"></div>
+          <div class="color-swatch" data-color="#2F8FE0" style="background:#2F8FE0;"></div>
+          <div class="color-swatch" data-color="#8B7CF6" style="background:#8B7CF6;"></div>
+          <div class="color-swatch" data-color="#E85DC0" style="background:#E85DC0;"></div>
+          <div class="color-swatch" data-color="#8B5A2B" style="background:#8B5A2B;"></div>
+          <div class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;"></div>
+        </div>
+        <div class="chip-row" id="newSignalType" style="margin-bottom:12px;">
+          <div class="chip active" data-val="go">GO (React)</div>
+          <div class="chip" data-val="nogo">NO-GO (Freeze)</div>
+        </div>
+        <div id="jointSection">
+          <div class="setting-label" style="margin-bottom:8px;">Detection Area (tap to toggle, multiple allowed)</div>
+          <div class="chip-row" id="newSignalJoint" style="margin-bottom:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+            <div class="chip" data-val="head">Head</div>
+            <div class="chip" data-val="shoulder">Shoulders</div>
+            <div class="chip" data-val="wrist">Hands</div>
+            <div class="chip" data-val="elbow">Elbows</div>
+            <div class="chip" data-val="knee">Knees</div>
+            <div class="chip" data-val="ankle">Ankles</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn-primary" id="addSignalBtn" style="flex:3;background:var(--surface2);">Add Signal</button>
+          <button class="btn-secondary" id="resetSignalsBtn" style="flex:1;padding:0 10px;font-size:13px;">Reset</button>
+        </div>
       </div>
-    </div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn-primary" id="addSignalBtn" style="flex:3;background:var(--surface2);">Add Signal</button>
-      <button class="btn-secondary" id="resetSignalsBtn" style="flex:1;padding:0 10px;font-size:13px;">Reset</button>
     </div>
   </div>
 
@@ -459,7 +465,25 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     updateJointSectionVisibility();
   }
 
+  var addSignalToggle=document.getElementById('addSignalToggle');
+  var addSignalChevron=document.getElementById('addSignalChevron');
+  var addSignalForm=document.getElementById('addSignalForm');
+  var addSignalDefaultSlot=document.getElementById('addSignalDefaultSlot');
+
+  function closeSignalForm(){
+    addSignalDefaultSlot.appendChild(addSignalForm);
+    addSignalForm.classList.add('hidden');
+    addSignalChevron.textContent='+';
+  }
+  function openSignalFormAfter(el){
+    if(el){ el.insertAdjacentElement('afterend',addSignalForm); }
+    else { addSignalDefaultSlot.appendChild(addSignalForm); }
+    addSignalForm.classList.remove('hidden');
+    addSignalChevron.textContent='−';
+  }
+
   function renderSignalsList(){
+    if(addSignalForm.parentElement!==addSignalDefaultSlot){ closeSignalForm(); }
     signalsList.innerHTML='';
     signals.forEach(function(s){
       var row=document.createElement('div');
@@ -477,7 +501,7 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
         e.stopPropagation();
         signals=signals.filter(function(x){return x.id!==s.id;});
         saveSignals();
-        if(editingSignalId===s.id){ resetSignalForm(); }
+        if(editingSignalId===s.id){ resetSignalForm(); closeSignalForm(); }
         renderSignalsList();
       });
       row.addEventListener('click',function(){
@@ -491,6 +515,7 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
         Array.prototype.forEach.call(newSignalJointChips.children,function(c){ c.classList.toggle('active', newSignalJoints.indexOf(c.dataset.val)!==-1); });
         addSignalBtn.textContent='Save Changes';
         updateJointSectionVisibility();
+        openSignalFormAfter(row);
         newSignalName.scrollIntoView({behavior:'smooth',block:'center'});
         newSignalName.focus();
       });
@@ -501,6 +526,16 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
 
   setTimeout(function(){ resetSignalForm(); renderSignalsList(); },0);
 
+  addSignalToggle.addEventListener('click',function(){
+    var isOpenHere=(!addSignalForm.classList.contains('hidden')) && addSignalForm.parentElement===addSignalDefaultSlot;
+    if(isOpenHere){
+      closeSignalForm();
+    } else {
+      resetSignalForm();
+      openSignalFormAfter(null);
+      newSignalName.focus();
+    }
+  });
   newSignalTypeChips.addEventListener('click',function(e){
     var chip=e.target.closest('.chip'); if(!chip) return;
     Array.prototype.forEach.call(newSignalTypeChips.children,function(c){c.classList.remove('active');});
@@ -536,11 +571,14 @@ import { FaceDetector as MPFaceDetector, PoseLandmarker, FilesetResolver } from 
     }
     saveSignals();
     resetSignalForm();
+    closeSignalForm();
     renderSignalsList();
   });
   resetSignalsBtn.addEventListener('click',function(){
     signals=DEFAULT_SIGNALS.map(function(s){ return {id:s.id,name:s.name,action:s.action,color:s.color,joints:(s.joints||[]).slice()}; });
     saveSignals();
+    resetSignalForm();
+    closeSignalForm();
     renderSignalsList();
   });
 
