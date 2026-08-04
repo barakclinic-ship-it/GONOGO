@@ -306,10 +306,9 @@ body{
 
   <div class="setting-group">
     <div class="setting-label">Face Mask</div>
-    <div class="chip-row" id="mask-chips" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+    <div class="chip-row" id="mask-chips" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
       <div class="chip active" data-val="off">Off</div>
       <div class="chip" data-val="circle">Circle</div>
-      <div class="chip" data-val="mask">Crown</div>
     </div>
   </div>
 
@@ -868,8 +867,10 @@ var MASK_IMAGES={
 
   var MASK_ASPECT={mask:1, circle:1};
   var MASK_WIDTH_FACTOR=1.15;
-  // Raised well above the face box so the crown sits properly above the head, not on the face
-  var MASK_TOP_OFFSET=0.60;
+  // Distance (as a fraction of face-box height) between the top of the detected face box
+  // and the BOTTOM edge of the crown — this is now a bottom-anchor gap, not a top-anchor
+  // offset, so it reliably keeps the crown above the head regardless of the crown's own height.
+  var MASK_TOP_OFFSET=0.35;
   var CIRCLE_WIDTH_FACTOR=1.15;
   var CIRCLE_TOP_OFFSET=0.05;
   function updateFaceMaskPosition(){
@@ -897,7 +898,10 @@ var MASK_IMAGES={
     faceMaskWrap.style.width=maskW+'px';
     faceMaskWrap.style.height=maskH+'px';
     faceMaskWrap.style.left=(anchor.x-maskW/2)+'px';
-    faceMaskWrap.style.top=anchor.y+'px';
+    // Circle sits centered on the anchor point (on the face); Crown's box is anchored so its
+    // BOTTOM edge sits at the anchor point, guaranteeing the whole crown stays above the face
+    // regardless of its height, instead of the old top-anchoring which let it sink onto the face.
+    faceMaskWrap.style.top=(isCircle? anchor.y : (anchor.y-maskH))+'px';
     faceMaskWrap.style.display='block';
 
     faceMaskBg.style.display='block';
